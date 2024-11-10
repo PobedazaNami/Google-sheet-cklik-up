@@ -1,0 +1,5 @@
+узнать айди веб хука
+curl --request GET ^
+--url https://api.clickup.com/api/v2/team/9012253248/webhook ^
+--header "Authorization: pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG" ^
+--insecure
