@@ -6,4 +6,6 @@ curl --request POST ^
   --header "Authorization: pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG" ^
   --header "Content-Type: application/json" ^
   --ssl-no-revoke ^
-  --data "{\"endpoint\":\"https://script.google.com/macros/s/AKfycbzz268NtI3hc1d4Hb1vWFMUGfvKQpVrjyigFEkGqRenh5bYmrKD3AK_t3Sq3sWIDw_b/exec?token=my_secret_token_second_integration\",\"events\":[\"taskCreated\",\"taskUpdated\",\"taskStatusUpdated\"],\"filters\":{\"list_ids\":[\"901204061958\"]}}"
+  --data "{\"endpoint\":\"https://script.google.com/macros/s/AKfycbxcRxAmmS5GQ06PTu7y25z9pBOPMI_lL8E5fuR7BKu-9C5kXZzFgT-hJ_JVDGuWmRuO/exec?token=my_secret_token_second_integration\",\"events\":[\"taskCreated\",\"taskUpdated\",\"taskStatusUpdated\"],\"filters\":{\"list_ids\":[\"901204061958\"]}}"
+
+
