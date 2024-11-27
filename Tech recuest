@@ -1,0 +1,568 @@
+// // ===============================
+// // Конфигурация и настройки
+// // ===============================
+
+// // ID Google Таблицы
+// const SPREADSHEET_ID = '1lYYAxNPhofX1bqnpsT9bC0c5EMxwI5Y-prIxXEsfmGo';
+
+// // Имена листов
+// const LOG_SHEET_NAME = 'Логи';
+// const TECH_REQUESTS_SHEET_NAME = 'Tech requests'; // Убедитесь, что имя листа точно совпадает
+
+// // API-ключ ClickUp (НЕ ХАРДКОДИТЕ API-КЛЮЧ В ПРОИЗВОДСТВЕННОМ КОДЕ)
+// const CLICKUP_API_KEY = 'pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG'; // Замените на ваш новый API-ключ
+
+// // ID списка ClickUp
+// const CLICKUP_LIST_ID = '901204061958'; // Замените на соответствующий ID из ваших логов
+
+// // ===============================
+// // Кастомные поля ClickUp (замените на реальные ID)
+// // ===============================
+// const CUSTOM_FIELD_REQUEST_TYPE_ID = '2b023b60-6e13-479b-985a-9346e29f41b3'; // 📞 Request Type
+// const CUSTOM_FIELD_AGENCY_ID = 'c5f1c5e4-62e4-4a41-a601-36c500615706'; // 🛂 Agency
+
+// // ===============================
+// // Функции логирования
+// // ===============================
+
+// /**
+//  * Функция для записи логов на отдельный лист.
+//  * @param {string} message Сообщение для логирования.
+//  */
+// function logToSheet(message) {
+//   try {
+//     var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+//     var logSheet = spreadsheet.getSheetByName(LOG_SHEET_NAME);
+
+//     if (!logSheet) {
+//       logSheet = spreadsheet.insertSheet(LOG_SHEET_NAME);
+//       // Добавляем заголовки для удобства
+//       logSheet.appendRow(['Дата и время', 'Сообщение']);
+//     }
+
+//     logSheet.appendRow([new Date(), message]);
+//   } catch (error) {
+//     // Если не удалось записать лог, используем Logger для отладки
+//     Logger.log('Не удалось записать лог: ' + error.message);
+//   }
+// }
+
+// // ===============================
+// // Функции обработки вебхуков
+// // ===============================
+
+// /**
+//  * Функция для обработки входящих POST-запросов (вебхуков).
+//  * @param {Object} e Объект события.
+//  * @returns {TextOutput} Ответ в формате JSON.
+//  */
+// function doPost(e) {
+//   logToSheet('Функция doPost вызвана');
+
+//   // Проверка наличия входящих данных
+//   if (!e || !e.postData || !e.postData.contents) {
+//     logToSheet('Ошибка: Отсутствуют входящие данные');
+//     return ContentService
+//       .createTextOutput(JSON.stringify({ status: 'error', message: 'No data received' }))
+//       .setMimeType(ContentService.MimeType.JSON);
+//   }
+
+//   try {
+//     var data = JSON.parse(e.postData.contents);
+//     logToSheet('Полученные данные: ' + JSON.stringify(data));
+
+//     // Обработка событий
+//     if (data.event === 'taskUpdated' || data.event === 'taskStatusUpdated') {
+//       logToSheet('Обнаружено событие обновления задачи');
+//       var taskId = data.task_id;
+
+//       // Обработка только наличия task_id
+//       if (taskId) {
+//         processTaskUpdated(taskId);
+//       } else {
+//         logToSheet('Ошибка: Отсутствует task_id в данных вебхука');
+//       }
+//     } else {
+//       logToSheet('Полученное событие не является taskUpdated или taskStatusUpdated, или отсутствует task_id.');
+//     }
+//   } catch (error) {
+//     logToSheet('Ошибка при обработке входящих данных: ' + error.message);
+//     return ContentService
+//       .createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
+//       .setMimeType(ContentService.MimeType.JSON);
+//   }
+
+//   logToSheet('Завершение функции doPost');
+//   return ContentService
+//     .createTextOutput(JSON.stringify({ status: 'success' }))
+//     .setMimeType(ContentService.MimeType.JSON);
+// }
+
+// /**
+//  * Функция для обработки обновленной задачи.
+//  * @param {string} taskId ID задачи.
+//  */
+// function processTaskUpdated(taskId) {
+//   // Получаем лок для предотвращения одновременной обработки
+//   var lock = LockService.getScriptLock();
+//   try {
+//     // Попытка захватить лок, ждем до 10 секунд
+//     lock.waitLock(10000);
+//   } catch (e) {
+//     logToSheet('Не удалось захватить лок: ' + e.message);
+//     return;
+//   }
+
+//   try {
+//     logToSheet(`Обработка задачи с ID: ${taskId}`);
+
+//     var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+//     var sheet = spreadsheet.getSheetByName(TECH_REQUESTS_SHEET_NAME);
+
+//     if (!sheet) {
+//       logToSheet(`Лист "${TECH_REQUESTS_SHEET_NAME}" не найден.`);
+//       return;
+//     }
+
+//     // Проверка: если задача уже записана, пропускаем обработку
+//     if (isTaskInSheet(taskId, sheet)) {
+//       logToSheet(`Задача с ID: ${taskId} уже существует в таблице. Обработка пропущена.`);
+//       return;
+//     }
+
+//     // Получаем детали задачи из ClickUp
+//     var task = getTaskDetails(taskId);
+//     if (!task) {
+//       logToSheet(`Задача с ID: ${taskId} не найдена.`);
+//       return;
+//     }
+
+//     var status = getTaskStatus(task);
+//     logToSheet(`Текущий статус задачи: ${status}`);
+
+//     if (status.toLowerCase() === 'open') {
+//       logToSheet(`Статус задачи ${taskId} установлен на "Open". Проверка наличия в таблице.`);
+
+//       // Повторная проверка наличия Task ID в таблице
+//       if (isTaskInSheet(taskId, sheet)) {
+//         logToSheet(`Задача с ID: ${taskId} уже существует в таблице. Обработка пропущена.`);
+//         return;
+//       }
+
+//       // Добавляем задачу в таблицу
+//       addTaskToSheet(task, sheet);
+//       logToSheet(`Задача ${taskId} успешно добавлена в таблицу.`);
+//     } else {
+//       logToSheet(`Статус задачи ${taskId} не "Open". Обработка пропущена.`);
+//     }
+//   } finally {
+//     // Освобождаем лок
+//     lock.releaseLock();
+//   }
+// }
+
+// /**
+//  * Функция для получения деталей задачи из ClickUp.
+//  * @param {string} taskId ID задачи.
+//  * @returns {Object} Объект задачи или null, если задача не найдена.
+//  */
+// function getTaskDetails(taskId) {
+//   if (!CLICKUP_API_KEY) {
+//     logToSheet('Ошибка: CLICKUP_API_KEY не установлен.');
+//     return null;
+//   }
+
+//   var url = `https://api.clickup.com/api/v2/task/${taskId}`;
+
+//   var options = {
+//     'method': 'get',
+//     'headers': {
+//       'Authorization': CLICKUP_API_KEY,
+//       'Content-Type': 'application/json'
+//     },
+//     'muteHttpExceptions': true
+//   };
+
+//   try {
+//     var response = UrlFetchApp.fetch(url, options);
+//     var responseCode = response.getResponseCode();
+//     var responseBody = response.getContentText();
+
+//     logToSheet(`Ответ API при получении деталей задачи ${taskId}: Код ответа ${responseCode}, Тело ответа: ${responseBody}`);
+
+//     if (responseCode === 200) {
+//       var data = JSON.parse(responseBody);
+//       return data;
+//     } else {
+//       logToSheet(`Ошибка при получении задачи ${taskId}. Код ответа: ${responseCode}. Ответ: ${responseBody}`);
+//       return null;
+//     }
+//   } catch (error) {
+//     logToSheet(`Ошибка при получении деталей задачи ${taskId}: ${error.message}`);
+//     return null;
+//   }
+// }
+
+// /**
+//  * Функция для получения статуса задачи.
+//  * @param {Object} task Объект задачи.
+//  * @returns {string} Статус задачи.
+//  */
+// function getTaskStatus(task) {
+//   return task.status ? task.status.status : '';
+// }
+
+// // ===============================
+// // Функции работы с ClickUp
+// // ===============================
+
+// /**
+//  * Функция для получения задач со статусом OPEN из ClickUp и записи их в Google Таблицу.
+//  */
+// function getOpenClickUpTasks() {
+//   logToSheet('getOpenClickUpTasks вызвана');
+
+//   if (!CLICKUP_API_KEY) {
+//     logToSheet('Ошибка: CLICKUP_API_KEY не установлен.');
+//     return;
+//   }
+
+//   var apiKey = CLICKUP_API_KEY;
+//   var listId = CLICKUP_LIST_ID;
+//   var url = `https://api.clickup.com/api/v2/list/${listId}/task?statuses[]=Open`;
+
+//   var options = {
+//     'method': 'get',
+//     'headers': {
+//       'Authorization': apiKey
+//     },
+//     'muteHttpExceptions': true
+//   };
+
+//   try {
+//     var response = UrlFetchApp.fetch(url, options);
+//     var responseCode = response.getResponseCode();
+//     var responseBody = response.getContentText();
+
+//     logToSheet(`Ответ API при получении задач со статусом "Open": Код ответа ${responseCode}, Тело ответа: ${responseBody}`);
+
+//     if (responseCode === 200) {
+//       var data = JSON.parse(responseBody);
+
+//       if (!data.tasks || data.tasks.length === 0) {
+//         logToSheet('Нет задач со статусом "Open".');
+//         return;
+//       }
+
+//       var tasks = data.tasks;
+//       logToSheet(`Найдено ${tasks.length} задач со статусом "Open".`);
+
+//       var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+//       var sheet = spreadsheet.getSheetByName(TECH_REQUESTS_SHEET_NAME);
+
+//       if (!sheet) {
+//         sheet = spreadsheet.insertSheet(TECH_REQUESTS_SHEET_NAME);
+//         // Добавляем заголовки, начиная с столбца D
+//         sheet.appendRow([
+//           '', '', '',
+//           'Request ID',
+//           'Request Type',
+//           'Request Date',
+//           'Telegram Tag',
+//           'Buyer Real Name',
+//           'Binom user name',
+//           'Binom campaign id',
+//           'TT account id',
+//           'FB account id',
+//           '', '', 'Comment', 'Custom Field 1', 'Custom Field 2', '', '', 'Task ID'
+//         ]);
+//         // Пояснения:
+//         // Столбцы A-C: оставлены пустыми
+//         // Столбцы O, P, Q, S: оставлены пустыми или могут быть использованы для других данных
+//       }
+
+//       tasks.forEach(function(task) {
+//         // Проверка на наличие задачи в таблице по ID
+//         if (!isTaskInSheet(task.id, sheet)) {
+//           addTaskToSheet(task, sheet);
+//         } else {
+//           logToSheet(`Задача с ID: ${task.id} уже существует в таблице. Обработка пропущена.`);
+//         }
+//       });
+//     } else {
+//       logToSheet(`Ошибка при получении задач со статусом "Open". Код ответа: ${responseCode}. Ответ: ${responseBody}`);
+//     }
+//   } catch (error) {
+//     logToSheet(`Ошибка при получении задач из ClickUp: ${error.message}`);
+//   }
+// }
+
+// /**
+//  * Функция для проверки, существует ли задача с заданным ID в листе.
+//  * @param {string} taskId ID задачи.
+//  * @param {Sheet} sheet Лист Google Таблицы.
+//  * @returns {boolean} Возвращает true, если задача найдена, иначе false.
+//  */
+// function isTaskInSheet(taskId, sheet) {
+//   var lastRow = sheet.getLastRow();
+//   if (lastRow < 2) return false; // Если меньше двух строк (заголовки), задач ещё нет.
+
+//   var taskIds = sheet.getRange(2, 20, lastRow - 1, 1).getValues().flat(); // Получаем все ID задач в массиве (столбец T - 20)
+
+//   // Логирование для отладки
+//   logToSheet(`Проверка Task ID: ${taskId} в таблице. Найденные Task IDs: ${taskIds.join(', ')}`);
+
+//   // Обработка пустых значений и приведение к строке
+//   return taskIds.some(id => id.toString().trim() === taskId.toString().trim());
+// }
+
+// /**
+//  * Функция для добавления задачи в Google Таблицу.
+//  * @param {Object} task Объект задачи из ClickUp.
+//  * @param {Sheet} sheet Лист Google Таблицы.
+//  */
+// function addTaskToSheet(task, sheet) {
+//   var id = task.id;
+
+//   // Проверка: если задача с таким ID уже есть, выходим из функции
+//   if (isTaskInSheet(id, sheet)) {
+//     logToSheet(`Задача с ID: ${id} уже существует в таблице.`);
+//     return;
+//   }
+
+//   var description = task.text_content || task.description || '';
+
+//   // Регулярные выражения для извлечения данных из описания
+//   var requestDate = extractField(description, 'Request Date');
+//   var telegramTag = extractField(description, 'Telegram Tag');
+//   var buyerRealName = extractField(description, 'Buyer Real Name');
+//   var binomUserName = extractField(description, 'Binom user name');
+//   var binomCampaignId = extractField(description, 'Binom campaign id');
+//   var ttAccountId = extractField(description, 'TT account id');
+//   var fbAccountId = extractField(description, 'FB account id');
+//   var comment = extractField(description, 'Comment');
+
+//   // Получаем значения кастомных полей
+//   var customField1 = getCustomFieldValueById(task.custom_fields, CUSTOM_FIELD_REQUEST_TYPE_ID);
+//   var customField2 = getCustomFieldValueById(task.custom_fields, CUSTOM_FIELD_AGENCY_ID);
+
+//   // Логируем полученные значения кастомных полей
+//   logToSheet(`Custom Field 1 Value: ${customField1}`);
+//   logToSheet(`Custom Field 2 Value: ${customField2}`);
+
+//   logToSheet(`Добавление задачи в таблицу: Request ID=-, Request Type=${customField1}, Request Date=${requestDate}, Telegram Tag=${telegramTag}, Buyer Real Name=${buyerRealName}, Binom user name=${binomUserName}, Binom campaign id=${binomCampaignId}, TT account id=${ttAccountId}, FB account id=${fbAccountId}, Comment=${comment}, Custom Field 1=${customField1}, Custom Field 2=${customField2}, Task ID=${id}`);
+
+//   // Создание новой строки для добавления в таблицу
+//   var newRow = [
+//     '', '', '', // Столбцы A-C: пустые
+//     '-', // Request ID (Столбец D - 4), устанавливаем как '-', так как Task ID не должен записываться здесь
+//     customField1, // Request Type (Столбец E - 5)
+//     requestDate, // Request Date (Столбец F - 6)
+//     telegramTag, // Telegram Tag (Столбец G - 7)
+//     buyerRealName, // Buyer Real Name (Столбец H - 8)
+//     binomUserName, // Binom user name (Столбец I - 9)
+//     binomCampaignId, // Binom campaign id (Столбец J - 10)
+//     ttAccountId, // TT account id (Столбец K - 11)
+//     fbAccountId, // FB account id (Столбец L - 12)
+//     '', '', // Столбцы M-N: пустые
+//     comment, // Comment (Столбец O - 15)
+//     customField1, // Custom Field 1 (Столбец P - 16)
+//     customField2, // Custom Field 2 (Столбец Q - 17)
+//     '', '', // Столбцы R-S: пустые
+//     id // Task ID (Столбец T - 20)
+//   ];
+
+//   // Логируем содержимое новой строки
+//   logToSheet(`Новая строка для добавления: ${newRow.join(', ')}`);
+
+//   // Добавление строки в таблицу
+//   sheet.appendRow(newRow);
+//   logToSheet(`Задача успешно добавлена в таблицу с ID: ${id}`);
+// }
+
+// /**
+//  * Функция для извлечения значения поля из описания.
+//  * @param {string} text Текст описания.
+//  * @param {string} fieldName Название поля.
+//  * @returns {string} Значение поля или '-'.
+//  */
+// function extractField(text, fieldName) {
+//   var regex = new RegExp(fieldName + ':\\s*(.*)', 'i');
+//   var match = text.match(regex);
+//   if (match && match[1].trim() !== '') {
+//     return match[1].trim();
+//   } else {
+//     return '-';
+//   }
+// }
+
+// // ===============================
+// // Дополнительные функции
+// // ===============================
+
+// /**
+//  * Функция для получения значения кастомного поля по ID
+//  * @param {Array} fields Массив кастомных полей задачи.
+//  * @param {string} fieldId ID кастомного поля.
+//  * @returns {string} Значение кастомного поля или '-' если поле не найдено.
+//  */
+// function getCustomFieldValueById(fields, fieldId) {
+//   var field = fields ? fields.find(f => f.id === fieldId) : null;
+//   if (!field) {
+//     logToSheet(`Кастомное поле с ID "${fieldId}" не найдено.`);
+//     return '-';
+//   }
+
+//   switch (field.type) {
+//     case 'drop_down':
+//       return field.value && field.value.name ? field.value.name : '-';
+//     case 'text':
+//       return field.value || '-';
+//     case 'date':
+//       return field.value ? Utilities.formatDate(new Date(field.value), Session.getScriptTimeZone(), 'dd.MM.yyyy') : '-';
+//     case 'number':
+//       return field.value !== undefined ? field.value : '-';
+//     // Добавьте обработку других типов полей при необходимости
+//     default:
+//       logToSheet(`Необработанный тип кастомного поля с ID "${fieldId}": ${field.type}`);
+//       return '-';
+//   }
+// }
+
+// // ===============================
+// // Функции обработки изменений в таблице
+// // ===============================
+
+// /**
+//  * Обработчик события редактирования Google Таблицы.
+//  * @param {Object} e Объект события.
+//  */
+// function onEdit(e) {
+//   try {
+//     if (!e) {
+//       logToSheet('Событие e не определено');
+//       return;
+//     } else {
+//       logToSheet(`Объект события e: ${JSON.stringify(e)}`);
+//     }
+//     if (!e.range) {
+//       logToSheet('Свойство e.range не определено');
+//       return;
+//     }
+
+//     var sheet = e.range.getSheet();
+//     // Проверяем, что изменения произошли на листе 'Tech requests'
+//     if (sheet.getName() !== TECH_REQUESTS_SHEET_NAME) {
+//       return;
+//     }
+
+//     var editedColumn = e.range.getColumn();
+//     var editedRow = e.range.getRow();
+
+//     // В текущем случае отслеживание изменений для обновления статуса в ClickUp отключено
+//     // Если необходимо отслеживать изменения, например, в столбце Status, раскомментируйте и настройте ниже
+
+//     /*
+//     // Пример: Если статус находится в столбце F (6-й столбец)
+//     if (editedColumn === 6 && editedRow > 1) { // Столбец F: Status
+//       // Получаем новый статус из отредактированной ячейки
+//       var newStatus = e.range.getValue();
+//       if (!newStatus) {
+//         logToSheet(`Нет нового статуса в строке ${editedRow}`);
+//         return;
+//       }
+
+//       // Получаем ID задачи из столбца T (20-й столбец) той же строки
+//       var taskId = sheet.getRange(editedRow, 20).getValue(); // Столбец T: Task ID
+//       if (taskId) {
+//         // Обновляем статус задачи в ClickUp
+//         updateClickUpTaskStatus(taskId.toString().trim(), newStatus.toString().trim());
+//       } else {
+//         // Логируем, если ID задачи отсутствует
+//         logToSheet(`ID задачи отсутствует в строке ${editedRow}`);
+//       }
+//     }
+//     */
+//   } catch (error) {
+//     logToSheet(`Ошибка в onEdit: ${error.message}`);
+//   }
+// }
+
+// /**
+//  * Функция для обновления статуса задачи в ClickUp через API.
+//  * @param {string} taskId ID задачи.
+//  * @param {string} newStatus Новый статус.
+//  */
+// function updateClickUpTaskStatus(taskId, newStatus) {
+//   if (!CLICKUP_API_KEY) {
+//     logToSheet('Ошибка: CLICKUP_API_KEY не установлен.');
+//     return;
+//   }
+
+//   var apiKey = CLICKUP_API_KEY;
+//   var url = `https://api.clickup.com/api/v2/task/${taskId}`;
+
+//   var mappedStatus;
+//   try {
+//     mappedStatus = mapStatus(newStatus);
+//   } catch (error) {
+//     logToSheet(`Ошибка при отображении статуса: ${error.message}`);
+//     return;
+//   }
+
+//   var payload = {
+//     "status": mappedStatus
+//   };
+
+//   var options = {
+//     'method': 'put',
+//     'headers': {
+//       'Authorization': apiKey,
+//       'Content-Type': 'application/json'
+//     },
+//     'payload': JSON.stringify(payload),
+//     'muteHttpExceptions': true
+//   };
+
+//   try {
+//     var response = UrlFetchApp.fetch(url, options);
+//     var responseCode = response.getResponseCode();
+//     var responseBody = response.getContentText();
+
+//     logToSheet(`Ответ API при обновлении статуса задачи ${taskId}: Код ответа ${responseCode}, Тело ответа: ${responseBody}`);
+
+//     if (responseCode === 200) {
+//       logToSheet(`Успешно обновлен статус задачи ${taskId} на "${mappedStatus}".`);
+//     } else {
+//       logToSheet(`Не удалось обновить задачу ${taskId}. Код ответа: ${responseCode}. Ответ: ${responseBody}`);
+//     }
+//   } catch (error) {
+//     logToSheet(`Ошибка при обновлении задачи ${taskId}: ${error.message}`);
+//   }
+// }
+
+// /**
+//  * Функция для отображения статуса из таблицы на соответствующий статус ClickUp.
+//  * @param {string} sheetStatus Статус из таблицы.
+//  * @returns {string} Соответствующий статус для ClickUp.
+//  */
+// function mapStatus(sheetStatus) {
+//   var statusMap = {
+//     'TO DO': 'to do',
+//     'OPEN': 'Open',
+//     'IN PROGRESS': 'in progress',
+//     'ERROR': 'error',
+//     'DONE BY GLOBAL': 'done by global'
+//     // Добавьте другие статусы по необходимости
+//   };
+  
+//   var normalizedStatus = sheetStatus.toUpperCase().trim();
+//   var mapped = statusMap[normalizedStatus];
+  
+//   if (!mapped) {
+//     logToSheet(`Предупреждение: Статус "${sheetStatus}" не найден в mapStatus.`);
+//     throw new Error(`Статус "${sheetStatus}" не является допустимым.`);
+//   }
+  
+//   return mapped;
+// }
