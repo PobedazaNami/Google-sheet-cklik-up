@@ -10,7 +10,7 @@
 // const TECH_REQUESTS_SHEET_NAME = 'Tech requests'; // Убедитесь, что имя листа точно совпадает
 
 // // API-ключ ClickUp (НЕ ХАРДКОДИТЕ API-КЛЮЧ В ПРОИЗВОДСТВЕННОМ КОДЕ)
-// const CLICKUP_API_KEY = 'pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG'; // Замените на ваш новый API-ключ
+// const CLICKUP_API_KEY = 'апи ключ'; // Замените на ваш новый API-ключ
 
 // // ID списка ClickUp
 // const CLICKUP_LIST_ID = '901204061958'; // Замените на соответствующий ID из ваших логов
