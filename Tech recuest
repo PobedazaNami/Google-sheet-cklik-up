@@ -3,7 +3,7 @@
 // // ===============================
 
 // // ID Google Таблицы
-// const SPREADSHEET_ID = '1lYYAxNPhofX1bqnpsT9bC0c5EMxwI5Y-prIxXEsfmGo';
+// const SPREADSHEET_ID = 'айди';
 
 // // Имена листов
 // const LOG_SHEET_NAME = 'Логи';
@@ -13,7 +13,7 @@
 // const CLICKUP_API_KEY = 'апи ключ'; // Замените на ваш новый API-ключ
 
 // // ID списка ClickUp
-// const CLICKUP_LIST_ID = '901204061958'; // Замените на соответствующий ID из ваших логов
+// const CLICKUP_LIST_ID = 'айди'; // Замените на соответствующий ID из ваших логов
 
 // // ===============================
 // // Кастомные поля ClickUp (замените на реальные ID)
