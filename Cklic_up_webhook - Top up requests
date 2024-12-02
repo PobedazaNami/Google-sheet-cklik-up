@@ -2,8 +2,8 @@
  * Функция для получения и логирования кастомных полей из ClickUp.
  */
 // function fetchAndLogCustomFields() {
-//   var apiKey = 'pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG';
-//   var listId = '901204058588';
+//   var apiKey = 'апи';
+//   var listId = 'айди';
 //   var url = `https://api.clickup.com/api/v2/list/${listId}/field`;
   
 //   var options = {
@@ -43,17 +43,17 @@ function authorizeAccess() {
 // ===============================
 
 // ID Google Таблицы
-const SPREADSHEET_ID = '1lYYAxNPhofX1bqnpsT9bC0c5EMxwI5Y-prIxXEsfmGo';
+const SPREADSHEET_ID = 'айди';
 
 // Имена листов
 const LOG_SHEET_NAME = 'Логи';
 const TOP_UP_REQUESTS_SHEET_NAME = 'Top up requests';
 
 // API-ключ ClickUp (Рекомендуется хранить в свойствах скрипта)
-const CLICKUP_API_KEY = 'pk_81835358_99S2IYZHBV93LTQDC4ELZDIHOYY4TWZG'; // Замените на ваш действительный API-ключ
+const CLICKUP_API_KEY = 'апи'; // Замените на ваш действительный API-ключ
 
 // ID списка ClickUp
-const CLICKUP_LIST_ID = '901204058588';
+const CLICKUP_LIST_ID = 'айди';
 
 // ===============================
 // Кастомные поля ClickUp (используйте полученные ID)
