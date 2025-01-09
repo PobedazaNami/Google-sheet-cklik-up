@@ -13,8 +13,8 @@ const CLICKUP_API_KEY = PropertiesService.getScriptProperties().getProperty('CLI
 const CLICKUP_LIST_ID = 'айди';
 
 // Кастомные поля ClickUp
-const AGENCY_FIELD_ID = 'a1b202bd-2ce8-4c7b-ad93-d0ee9e6e7208';
-const TTFB_FIELD_ID = 'e937431d-a2c2-4071-bf1f-fe325963a330';
+const AGENCY_FIELD_ID = '-';
+const TTFB_FIELD_ID = '-';
 
 // ===============================
 // Функции логирования
